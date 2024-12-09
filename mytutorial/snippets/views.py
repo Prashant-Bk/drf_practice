@@ -1,51 +1,66 @@
-from rest_framework import status
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
 from snippets.models import Snippet
 from snippets.serializers import SnippetSerializer
+from django.http import Http404
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
-@api_view(http_method_names=['GET', 'POST'])
-def snippet_list(request , format = None):
+
+class SnippetList(APIView):
     """
-    List all code snippets, or create a new snippet.
+    List all snippets, or create a new snippet.
     """
-    if request.method == 'GET':
+    def get(self, request, format=None): #automatically checks if request.method == "GET"
         snippets = Snippet.objects.all()
         serializer = SnippetSerializer(snippets, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data)
 
-    elif request.method == 'POST':
+    def post(self, request, format=None):  #automatically checks if request.method == "POST"
         serializer = SnippetSerializer(data=request.data)
-        # print(type(request))      <class 'rest_framework.request.Request'>
-        # print(type(request.data)) <class 'dict'> 
-        
-        
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-@api_view(['GET', 'PUT', 'DELETE'])
-def snippet_detail(request, pk , format = None):
+class SnippetDetail(APIView):
     """
-    Retrieve, update or delete a code snippet.
+    Retrieve, update or delete a snippet instance.
     """
-    try:
-        snippet = Snippet.objects.get(pk=pk)
-    except Snippet.DoesNotExist:
-        return Response(status=status.HTTP_404_NOT_FOUND)
+    def get_object(self, pk): #whenever this view is hitted by url
+                              #django creates a instance SnippetDetail which is self in these methods 
+       
+        print(self)           #<snippets.views.SnippetDetail object at 0x0000018CC94A5510>
+        print(type(self))     #<class 'snippets.views.SnippetDetail'>                   
+        try:
+            return Snippet.objects.get(pk=pk)
+        except Snippet.DoesNotExist:
+            raise Http404
 
-    if request.method == 'GET':
+    def get(self, request, pk, format=None):
+        snippet = self.get_object(pk)
         serializer = SnippetSerializer(snippet)
-        return Response(serializer.data , status=status.HTTP_200_OK)
+        return Response(serializer.data)
 
-    elif request.method == 'PUT':
+    def put(self, request, pk, format=None):
+        snippet = self.get_object(pk)
         serializer = SnippetSerializer(snippet, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'DELETE':
+    def delete(self, request, pk, format=None):
+        snippet = self.get_object(pk)
         snippet.delete()
-        return Response({"message":"deleted successfully!"}, status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    def patch(self , request , pk , format = None):
+        data = request.data
+        snippet = self.get_object(pk)
+        serializer = SnippetSerializer(instance = snippet , data = data , partial = True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(data = serializer.data , status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+            
