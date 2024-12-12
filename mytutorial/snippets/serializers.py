@@ -1,19 +1,31 @@
 from rest_framework import serializers
-from snippets.models import Snippet, LANGUAGE_CHOICES, STYLE_CHOICES
 from django.contrib.auth.models import User
+from .models import Snippet
 
+class SnippetSerializer(serializers.HyperlinkedModelSerializer):
+    owner = serializers.HyperlinkedRelatedField(view_name='user_detail', read_only=True)   
+    highlight = serializers.HyperlinkedIdentityField(view_name='snippet_highlighted', lookup_field='id', format='html')
 
-class SnippetSerializer(serializers.ModelSerializer):
-    owner = serializers.ReadOnlyField(source='owner.username')
     class Meta:
         model = Snippet
-        fields = ['id','owner', 'title','created', 'code', 'linenos', 'language', 'style']
-        read_only_fields = [ 'created'] 
+        fields = ['url', 'id', 'owner',
+                  'title', 'code','highlight','linenos', 'language', 'style']
+        extra_kwargs = {
+            'url': {'view_name': 'snippet_detail_fun'}
+        }
+         
 
-class UserSerializer(serializers.ModelSerializer):
-    snippets = serializers.PrimaryKeyRelatedField(many=True, queryset=Snippet.objects.all())
-    # The 'snippets' field is a reverse relationship on User, so it must be explicitly added to the serializer.
+class UserSerializer(serializers.HyperlinkedModelSerializer):
+    snippets = serializers.HyperlinkedRelatedField(many=True, view_name='snippet_detail_fun', read_only=True)
+    highlights = serializers.HyperlinkedIdentityField(
+        view_name='user_highlights',
+        lookup_field = "username",
+        format='html' )
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'snippets']
+        fields = ['url', 'pk', 'username' , 'snippets' , 'highlights']
+        extra_kwargs = {
+            'url': {'view_name': 'user_detail'} , 
+        }
          

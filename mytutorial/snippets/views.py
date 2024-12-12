@@ -10,10 +10,6 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework import renderers
 
-from django.http import HttpRequest 
-
-
-
 
 @api_view(http_method_names=["GET"])
 def api_root(request , format = None):
@@ -49,7 +45,7 @@ class UserList(generics.ListAPIView): #adding read only views
     queryset = User.objects.all()
     serializer_class = UserSerializer
  
- 
+    
 class UserRetrieve(generics.RetrieveAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -69,8 +65,8 @@ class SnippetHighlight(generics.GenericAPIView):
     
 #To get all the highlighted snippets of a user
 @api_view(http_method_names=["GET"])
-@renderer_classes([renderers.StaticHTMLRenderer])
 #applying html renderer to @api based view
+@renderer_classes([renderers.StaticHTMLRenderer])
 def get_users_highlights(request , username):
     user = User.objects.get(username = username)
     user_snippets = user.snippets.all()
