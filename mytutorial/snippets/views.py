@@ -1,6 +1,6 @@
-from snippets.models import Snippet 
+from snippets.models import Snippet ,Project
 from django.contrib.auth.models import User
-from snippets.serializers import SnippetSerializer
+from snippets.serializers import SnippetSerializer , ProjectSerializer
 from snippets.serializers import  UserSerializer
 from rest_framework import generics
 from rest_framework import permissions
@@ -12,6 +12,15 @@ from rest_framework import renderers
 from rest_framework import viewsets
 from rest_framework.decorators import action
 
+class ProjectListView(generics.ListCreateAPIView):
+    queryset = Project.objects.all()
+    serializer_class = ProjectSerializer
+
+class ProjectDetailView(generics.RetrieveUpdateAPIView):
+    lookup_field = 'pk'
+    queryset = Project.objects.all()
+    serializer_class = ProjectSerializer
+
 
 @api_view(http_method_names=["GET"])
 def api_root(request , format = None):
@@ -21,7 +30,8 @@ def api_root(request , format = None):
             "snippet":reverse("snippet-list", request=request, format=format),
             "user":reverse("user-list", request=request, format=format),
             "request info":reverse(make_request, request=request, format=format),
-            # "my highlights":reverse('user-get_users_highlights' ,args=[username], request=request, format=format)
+            "projects":reverse('project-list' , request=request, format=format),
+            "my highlights":reverse('user-highlights' ,args=[username], request=request, format=format)
         })
     
 

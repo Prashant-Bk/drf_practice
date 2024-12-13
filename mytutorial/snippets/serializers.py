@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Snippet
+from .models import Snippet , Project
 
 class SnippetSerializer(serializers.HyperlinkedModelSerializer):
     owner = serializers.HyperlinkedRelatedField(view_name='user-detail', read_only=True)   
@@ -28,4 +28,17 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         extra_kwargs = {
             'url': {'view_name': 'user-detail'} , 
         }
-         
+        
+        
+        
+        
+class ProjectSerializer(serializers.HyperlinkedModelSerializer):
+    snippets = serializers.HyperlinkedIdentityField(many = True , view_name = "snippet-detail")
+    class Meta:
+        model = Project
+        fields = ['url','title' , 'created' , 'image', 'snippets']
+        # extra_kwargs = {
+        #     'url': {'view_name': 'project-detail'} , 
+        # }
+        read_only_fields = ['created']
+        
