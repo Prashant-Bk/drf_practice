@@ -2,6 +2,7 @@ from snippets.models import Snippet
 from django.contrib.auth.models import User
 from snippets.serializers import SnippetSerializer
 from snippets.serializers import  UserSerializer
+from rest_framework import generics
 from rest_framework import permissions
 from .permissions import IsOwnerOrReadOnly
 from rest_framework.decorators import api_view , renderer_classes
@@ -17,10 +18,10 @@ def api_root(request , format = None):
     username = request.user.username
     return Response(
         data = {
-            "snippet":reverse("snippet_list", request=request, format=format),
-            "user":reverse("user_list", request=request, format=format),
+            "snippet":reverse("snippet-list", request=request, format=format),
+            "user":reverse("user-list", request=request, format=format),
             "request info":reverse(make_request, request=request, format=format),
-            "my highlights":reverse('user_highlights' ,args=[username], request=request, format=format)
+            # "my highlights":reverse('user-get_users_highlights' ,args=[username], request=request, format=format)
         })
     
 
@@ -36,15 +37,11 @@ class SnippetViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly,
                           IsOwnerOrReadOnly]
 
-    @action(detail=True) #get detail of a object using pk
+    @action(detail=True, renderer_classes=[renderers.StaticHTMLRenderer])
     def highlight(self, request, *args, **kwargs):
         snippet = self.get_object()
         return Response(snippet.highlighted)
 
-
-            
-        
-        
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
     
@@ -56,10 +53,10 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     
-    @action(detail= False , renderer_classes = [renderers.StaticHTMLRenderer] )
-    def get_users_highlights(self, request, *args, **kwargs):
-        username = kwargs["username"]
-        user = User.objects.get(username = username)
+    @action(detail= True , renderer_classes = [renderers.StaticHTMLRenderer] )
+    def highlights(self, request, *args, **kwargs):
+        pk = kwargs["pk"]
+        user = User.objects.get(id = pk)
         user_snippets = user.snippets.all()
         user_snippets_highlighted = [snippet.highlighted for snippet in user_snippets]
         return Response(user_snippets_highlighted)
