@@ -2,13 +2,14 @@ from snippets.models import Snippet
 from django.contrib.auth.models import User
 from snippets.serializers import SnippetSerializer
 from snippets.serializers import  UserSerializer
-from rest_framework import generics
 from rest_framework import permissions
 from .permissions import IsOwnerOrReadOnly
 from rest_framework.decorators import api_view , renderer_classes
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework import renderers
+from rest_framework import viewsets
+from rest_framework.decorators import action
 
 
 @api_view(http_method_names=["GET"])
@@ -19,59 +20,49 @@ def api_root(request , format = None):
             "snippet":reverse("snippet_list", request=request, format=format),
             "user":reverse("user_list", request=request, format=format),
             "request info":reverse(make_request, request=request, format=format),
-            "my highlights":reverse(get_users_highlights ,args=[username], request=request, format=format)
+            "my highlights":reverse('user_highlights' ,args=[username], request=request, format=format)
         })
     
-      
-class SnippetList(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
-    #if user is authenticated it can read and write else read only
+
+class SnippetViewSet(viewsets.ModelViewSet):
+    """
+    This ViewSet automatically provides `list`, `create`, `retrieve`,
+    `update` and `destroy` actions.
+
+    Additionally we also provide an extra `highlight` action.
+    """
     queryset = Snippet.objects.all()
     serializer_class = SnippetSerializer
-    
-    def perform_create(self, serializer):  #over riding perform_create with owner equals to current user 
-     serializer.save(owner=self.request.user)
-
-
-class SnippetDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly,
-                      IsOwnerOrReadOnly]
-    #IsOwnerOrReadOnly => only the owner could make changes if not owner then read only
-    queryset = Snippet.objects.all()
-    serializer_class = SnippetSerializer
-    
-    
-class UserList(generics.ListAPIView): #adding read only views
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
- 
-    
-class UserRetrieve(generics.RetrieveAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    
-    
-class SnippetHighlight(generics.GenericAPIView):
-    queryset = Snippet.objects.all()
-    renderer_classes = [renderers.StaticHTMLRenderer]
-    lookup_field = "id"
-    
-    def get(self, request, *args, **kwargs):
-        snippet = self.get_object() #use pk here
-        print(snippet.highlighted)
-        return Response([snippet.highlighted])
+                          IsOwnerOrReadOnly]
+
+    @action(detail=True) #get detail of a object using pk
+    def highlight(self, request, *args, **kwargs):
+        snippet = self.get_object()
+        return Response(snippet.highlighted)
+
+
+            
         
-       
+        
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
     
-#To get all the highlighted snippets of a user
-@api_view(http_method_names=["GET"])
-#applying html renderer to @api based view
-@renderer_classes([renderers.StaticHTMLRenderer])
-def get_users_highlights(request , username):
-    user = User.objects.get(username = username)
-    user_snippets = user.snippets.all()
-    user_snippets_highlighted = [snippet.highlighted for snippet in user_snippets]
-    return Response(user_snippets_highlighted)
+    
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    This viewset automatically provides `list` and `retrieve` actions.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    
+    @action(detail= False , renderer_classes = [renderers.StaticHTMLRenderer] )
+    def get_users_highlights(self, request, *args, **kwargs):
+        username = kwargs["username"]
+        user = User.objects.get(username = username)
+        user_snippets = user.snippets.all()
+        user_snippets_highlighted = [snippet.highlighted for snippet in user_snippets]
+        return Response(user_snippets_highlighted)
 
 
 # for checking current request and user
